@@ -1,7 +1,7 @@
 {
     "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
     "productName": "chartdb",
-    "version": "1.20.0",
+    "version": "1.20.3",
     "identifier": "com.chartdb.dev",
     "build": {
         "frontendDist": "../dist",
@@ -15,6 +15,7 @@
                 "title": "chartdb",
                 "width": 800,
                 "height": 600,
+                "backgroundColor": "#020817",
                 "resizable": true,
                 "fullscreen": false,
                 "zoomHotkeysEnabled": true
