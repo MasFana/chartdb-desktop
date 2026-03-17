@@ -4,6 +4,8 @@ on:
     push:
         branches:
             - main
+        tags:
+            - 'v*'
 
 permissions:
     contents: write
@@ -106,9 +108,6 @@ jobs:
         needs: build
         env:
             GH_TOKEN: ${{ github.token }}
-            RELEASE_TAG: desktop-main
-            RELEASE_NAME: Desktop Main Build
-            RELEASE_NOTES: Latest ChartDB desktop build from the main branch.
         steps:
             - name: Download workflow artifacts
               uses: actions/download-artifact@v4
@@ -128,38 +127,44 @@ jobs:
                     exit 1
                   fi
 
-                  if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
-                    gh api \
-                      --method PATCH \
-                      "repos/${GITHUB_REPOSITORY}/git/refs/tags/${RELEASE_TAG}" \
-                      -f sha="${GITHUB_SHA}" \
-                      -F force=true >/dev/null
+                  if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+                    release_tag="${GITHUB_REF_NAME}"
                   else
-                    gh api \
-                      --method POST \
-                      "repos/${GITHUB_REPOSITORY}/git/refs" \
-                      -f ref="refs/tags/${RELEASE_TAG}" \
-                      -f sha="${GITHUB_SHA}" >/dev/null
-                  fi
+                    release_tag="desktop-main"
 
-                  if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
-                    gh release edit "${RELEASE_TAG}" \
-                      --title "${RELEASE_NAME}" \
-                      --notes "${RELEASE_NOTES}" \
-                      --target "${GITHUB_SHA}" \
-                      --prerelease
-                  else
-                    gh release create "${RELEASE_TAG}" \
-                      --title "${RELEASE_NAME}" \
-                      --notes "${RELEASE_NOTES}" \
-                      --target "${GITHUB_SHA}" \
-                      --prerelease
-                  fi
-
-                  while IFS= read -r asset_name; do
-                    if [ -n "${asset_name}" ]; then
-                      gh release delete-asset "${RELEASE_TAG}" "${asset_name}" --yes
+                    if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${release_tag}" >/dev/null 2>&1; then
+                      gh api \
+                        --method PATCH \
+                        "repos/${GITHUB_REPOSITORY}/git/refs/tags/${release_tag}" \
+                        -f sha="${GITHUB_SHA}" \
+                        -F force=true >/dev/null
+                    else
+                      gh api \
+                        --method POST \
+                        "repos/${GITHUB_REPOSITORY}/git/refs" \
+                        -f ref="refs/tags/${release_tag}" \
+                        -f sha="${GITHUB_SHA}" >/dev/null
                     fi
-                  done < <(gh release view "${RELEASE_TAG}" --json assets --jq '.assets[].name')
 
-                  gh release upload "${RELEASE_TAG}" "${assets[@]}"
+                    if gh release view "${release_tag}" >/dev/null 2>&1; then
+                      gh release edit "${release_tag}" \
+                        --title "Desktop Main Build" \
+                        --notes "Latest ChartDB desktop build from the main branch." \
+                        --target "${GITHUB_SHA}" \
+                        --prerelease
+                    else
+                      gh release create "${release_tag}" \
+                        --title "Desktop Main Build" \
+                        --notes "Latest ChartDB desktop build from the main branch." \
+                        --target "${GITHUB_SHA}" \
+                        --prerelease
+                    fi
+                  fi
+
+                  if [ "${GITHUB_REF_TYPE}" = "tag" ] && ! gh release view "${release_tag}" >/dev/null 2>&1; then
+                    gh release create "${release_tag}" \
+                      --title "${release_tag}" \
+                      --notes "Desktop binaries for ${release_tag}."
+                  fi
+
+                  gh release upload "${release_tag}" "${assets[@]}" --clobber
