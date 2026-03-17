@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.20.2](https://github.com/MasFana/chartdb-desktop/compare/v1.20.1...v1.20.2) (2026-03-17)
+
+
+### Bug Fixes
+
+* align tauri window and release version ([da7a203](https://github.com/MasFana/chartdb-desktop/commit/da7a203f53bddaecca9c49f906bb645d71101382))
+* prevent startup white flash in desktop app ([063289d](https://github.com/MasFana/chartdb-desktop/commit/063289d857c10f18169d14c7e39bbb580337ae1c))
+* set GH_REPO for release publishing ([0fd093d](https://github.com/MasFana/chartdb-desktop/commit/0fd093dcfae39c7cd157bffe37d5995c28e3130e))
+
 ## 1.0.0 (2026-03-17)
 
 
