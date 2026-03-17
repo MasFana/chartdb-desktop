@@ -1,4 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {
+    useEffect,
+    useState,
+    useCallback,
+    useLayoutEffect,
+} from 'react';
 import type { EffectiveTheme } from './theme-context';
 import { ThemeContext } from './theme-context';
 import { useMediaQuery } from 'react-responsive';
@@ -26,7 +31,7 @@ export const ThemeProvider: React.FC<React.PropsWithChildren> = ({
         setEffectiveTheme(theme === 'system' ? systemTheme : theme);
     }, [theme, systemTheme]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (effectiveTheme === 'dark') {
             document.documentElement.classList.add('dark');
         } else {

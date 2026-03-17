@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="color-scheme" content="light dark" />
         <meta name="robots" content="noindex, max-image-preview:large" />
         <title>ChartDB - Create & Visualize Database Schema Diagrams</title>
         <link rel="canonical" href="https://chartdb.io" />
@@ -13,6 +14,41 @@
             href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap"
             rel="stylesheet"
         />
+        <script>
+            (function () {
+                const DARK_BG = '#020817';
+                const LIGHT_BG = '#ffffff';
+
+                const applyBackground = (dark) => {
+                    const bg = dark ? DARK_BG : LIGHT_BG;
+                    document.documentElement.style.backgroundColor = bg;
+                };
+
+                try {
+                    const savedTheme = localStorage.getItem('theme');
+                    const prefersDark = window.matchMedia(
+                        '(prefers-color-scheme: dark)'
+                    ).matches;
+                    const shouldUseDark =
+                        savedTheme === 'dark' ||
+                        (savedTheme !== 'light' && prefersDark);
+
+                    if (shouldUseDark) {
+                        document.documentElement.classList.add('dark');
+                    }
+
+                    applyBackground(shouldUseDark);
+                } catch {
+                    const fallbackDark = window.matchMedia(
+                        '(prefers-color-scheme: dark)'
+                    ).matches;
+                    if (fallbackDark) {
+                        document.documentElement.classList.add('dark');
+                    }
+                    applyBackground(fallbackDark);
+                }
+            })();
+        </script>
         <script src="/config.js"></script>
         <script>
             // Load analytics only if not disabled
