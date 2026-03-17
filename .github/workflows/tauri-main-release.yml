@@ -1,0 +1,165 @@
+name: Tauri Main Release
+
+on:
+    push:
+        branches:
+            - main
+
+permissions:
+    contents: write
+
+concurrency:
+    group: tauri-main-release-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    build:
+        name: Build ${{ matrix.platform }}
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - os: ubuntu-latest
+                      platform: linux
+                      artifact_name: tauri-linux
+                    - os: windows-latest
+                      platform: windows
+                      artifact_name: tauri-windows
+                    - os: macos-latest
+                      platform: macos
+                      artifact_name: tauri-macos
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Use Node.js 24.x
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 24.x
+                  cache: npm
+
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Install Linux dependencies
+              if: matrix.platform == 'linux'
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y \
+                    build-essential \
+                    curl \
+                    file \
+                    libayatana-appindicator3-dev \
+                    libgtk-3-dev \
+                    librsvg2-dev \
+                    libssl-dev \
+                    libwebkit2gtk-4.1-dev \
+                    libxdo-dev \
+                    patchelf \
+                    wget
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build Tauri desktop app
+              run: npm run tauri:build
+
+            - name: Collect release assets
+              shell: pwsh
+              run: |
+                  $bundleDir = Join-Path $PWD "src-tauri/target/release/bundle"
+                  $artifactDir = Join-Path $PWD "release-artifacts/${{ matrix.artifact_name }}"
+                  $patterns = @("*.AppImage", "*.deb", "*.rpm", "*.msi", "*.exe", "*.dmg", "*.app.tar.gz", "*.sig", "latest*.json")
+
+                  New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+
+                  $files = Get-ChildItem -Path $bundleDir -Recurse -File | Where-Object {
+                    $name = $_.Name
+                    foreach ($pattern in $patterns) {
+                      if ($name -like $pattern) {
+                        return $true
+                      }
+                    }
+                    return $false
+                  }
+
+                  if (-not $files -or $files.Count -eq 0) {
+                    throw "No Tauri release assets found under $bundleDir"
+                  }
+
+                  foreach ($file in $files) {
+                    Copy-Item -Path $file.FullName -Destination (Join-Path $artifactDir $file.Name) -Force
+                  }
+
+            - name: Upload workflow artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ matrix.artifact_name }}
+                  path: release-artifacts/${{ matrix.artifact_name }}
+                  if-no-files-found: error
+
+    publish:
+        name: Publish rolling prerelease
+        runs-on: ubuntu-latest
+        needs: build
+        env:
+            GH_TOKEN: ${{ github.token }}
+            RELEASE_TAG: desktop-main
+            RELEASE_NAME: Desktop Main Build
+            RELEASE_NOTES: Latest ChartDB desktop build from the main branch.
+        steps:
+            - name: Download workflow artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  pattern: tauri-*
+                  path: release-artifacts
+
+            - name: Publish rolling prerelease
+              shell: bash
+              run: |
+                  set -euo pipefail
+
+                  mapfile -d '' assets < <(find release-artifacts -type f -print0)
+
+                  if [ "${#assets[@]}" -eq 0 ]; then
+                    echo "No release assets were downloaded."
+                    exit 1
+                  fi
+
+                  if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+                    gh api \
+                      --method PATCH \
+                      "repos/${GITHUB_REPOSITORY}/git/refs/tags/${RELEASE_TAG}" \
+                      -f sha="${GITHUB_SHA}" \
+                      -F force=true >/dev/null
+                  else
+                    gh api \
+                      --method POST \
+                      "repos/${GITHUB_REPOSITORY}/git/refs" \
+                      -f ref="refs/tags/${RELEASE_TAG}" \
+                      -f sha="${GITHUB_SHA}" >/dev/null
+                  fi
+
+                  if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+                    gh release edit "${RELEASE_TAG}" \
+                      --title "${RELEASE_NAME}" \
+                      --notes "${RELEASE_NOTES}" \
+                      --target "${GITHUB_SHA}" \
+                      --prerelease
+                  else
+                    gh release create "${RELEASE_TAG}" \
+                      --title "${RELEASE_NAME}" \
+                      --notes "${RELEASE_NOTES}" \
+                      --target "${GITHUB_SHA}" \
+                      --prerelease
+                  fi
+
+                  while IFS= read -r asset_name; do
+                    if [ -n "${asset_name}" ]; then
+                      gh release delete-asset "${RELEASE_TAG}" "${asset_name}" --yes
+                    fi
+                  done < <(gh release view "${RELEASE_TAG}" --json assets --jq '.assets[].name')
+
+                  gh release upload "${RELEASE_TAG}" "${assets[@]}"

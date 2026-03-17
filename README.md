@@ -73,28 +73,52 @@ ChartDB is currently in Public Beta. Star and watch this repository to get notif
 
 ## Getting Started
 
-Use the [cloud version](https://app.chartdb.io?ref=github_readme_2) or deploy locally:
+ChartDB can be used in three ways:
 
-### How To Use
+- Use the hosted app at [app.chartdb.io](https://app.chartdb.io?ref=github_readme_2)
+- Run the web app locally with Vite
+- Build the Tauri desktop app locally or download the latest desktop installers from GitHub Releases
+
+### Web App Development
 
 ```bash
 npm install
 npm run dev
 ```
 
-### Build
+### Web App Production Build
 
 ```bash
 npm install
 npm run build
 ```
 
-Or like this if you want to have AI capabilities:
+If you want AI capabilities during the build:
 
 ```bash
 npm install
 VITE_OPENAI_API_KEY=<YOUR_OPEN_AI_KEY> npm run build
 ```
+
+### Desktop App Development (Tauri)
+
+The repository also includes `chartdb-desktop`, a Tauri wrapper around the ChartDB frontend.
+
+```bash
+npm install
+npm run tauri:dev
+```
+
+### Desktop App Production Build
+
+```bash
+npm install
+npm run tauri:build
+```
+
+Desktop builds require the standard Tauri prerequisites for your platform, including Rust and the OS-level dependencies needed for native bundling.
+
+If you just want installers instead of building locally, download the latest desktop artifacts from the rolling GitHub prerelease named `Desktop Main Build` in the repository Releases page.
 
 ### Run the Docker Container
 
