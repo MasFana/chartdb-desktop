@@ -66,6 +66,8 @@ jobs:
               run: npm ci
 
             - name: Build Tauri desktop app
+              env:
+                  NODE_OPTIONS: --max-old-space-size=6144
               run: npm run tauri:build
 
             - name: Collect release assets
